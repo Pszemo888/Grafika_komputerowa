@@ -1,198 +1,212 @@
 package com.example.proj_graf03;
 
 import javafx.geometry.Insets;
+import javafx.geometry.Point3D;
+import javafx.geometry.Pos;
+import javafx.scene.Group;
+import javafx.scene.SubScene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.ChoiceBox;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
+import javafx.scene.paint.PhongMaterial;
+import javafx.scene.shape.MeshView;
+import javafx.scene.shape.TriangleMesh;
+import javafx.scene.transform.Rotate;
+import javafx.scene.transform.Translate;
 
 /**
- * JavaFX wersja kostki RGB z przykładu Swing.
- * Rysuje gęstą siatkę voxeli w 3D, umożliwia obrót myszą oraz podgląd przekroju X/Y/Z.
+ * Panel wyświetlający kostkę RGB w 3D z możliwością obracania oraz podglądem przekroju.
  */
 public class RgbCubePane extends BorderPane {
 
-    private final int voxelSteps = 40;
-    private final List<Point3D> voxels = new ArrayList<>();
+    private final Rotate rotateX = new Rotate(-20, Rotate.X_AXIS);
+    private final Rotate rotateY = new Rotate(-30, Rotate.Y_AXIS);
+    private double lastX;
+    private double lastY;
 
-    private final Canvas canvas = new Canvas(800, 650);
-    private final Slider sliceSlider = new Slider(0, voxelSteps - 1, voxelSteps - 1);
-
-    private char sliceAxis = 'N';
-    private double rotX = 0.4;
-    private double rotY = 0.6;
-    private double lastMouseX;
-    private double lastMouseY;
+    private final Canvas sliceCanvas = new Canvas(260, 260);
+    private final Slider sliceSlider = new Slider(0, 1, 0.5);
+    private final ChoiceBox<String> axisChoice = new ChoiceBox<>();
 
     public RgbCubePane() {
-        setPadding(new Insets(16));
-        initializeVoxels();
+        setPadding(new Insets(20));
 
-        StackPane canvasHolder = new StackPane(canvas);
-        canvasHolder.setStyle("-fx-background-color: black; -fx-border-color: #444;");
-        canvas.widthProperty().bind(canvasHolder.widthProperty());
-        canvas.heightProperty().bind(canvasHolder.heightProperty());
-        canvasHolder.widthProperty().addListener((obs, o, n) -> render());
-        canvasHolder.heightProperty().addListener((obs, o, n) -> render());
+        SubScene cubeScene = createCubeScene();
 
-        setCenter(canvasHolder);
-        setBottom(buildControls());
+        VBox controls = buildControls();
+        setCenter(cubeScene);
+        setRight(controls);
+        setMargin(controls, new Insets(0, 0, 0, 16));
 
-        canvas.addEventHandler(MouseEvent.MOUSE_PRESSED, this::onMousePressed);
-        canvas.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
-
-        render();
+        drawSlice();
     }
 
-    private void initializeVoxels() {
-        voxels.clear();
-        for (int i = 0; i < voxelSteps; i++) {
-            for (int j = 0; j < voxelSteps; j++) {
-                for (int k = 0; k < voxelSteps; k++) {
-                    double x = i / (double) (voxelSteps - 1);
-                    double y = j / (double) (voxelSteps - 1);
-                    double z = k / (double) (voxelSteps - 1);
-                    voxels.add(new Point3D(x, y, z));
-                }
+    private SubScene createCubeScene() {
+        double size = 250;
+        Group cube = new Group();
+        cube.getChildren().addAll(
+                createFace(size, new Point3D(0, 0, size / 2), 0, 0, 0, FaceType.FRONT),
+                createFace(size, new Point3D(0, 0, -size / 2), 0, 180, 0, FaceType.BACK),
+                createFace(size, new Point3D(-size / 2, 0, 0), 0, -90, 0, FaceType.LEFT),
+                createFace(size, new Point3D(size / 2, 0, 0), 0, 90, 0, FaceType.RIGHT),
+                createFace(size, new Point3D(0, -size / 2, 0), 90, 0, 0, FaceType.TOP),
+                createFace(size, new Point3D(0, size / 2, 0), -90, 0, 0, FaceType.BOTTOM)
+        );
+
+        Group root3d = new Group();
+        root3d.getChildren().add(cube);
+        cube.getTransforms().addAll(rotateX, rotateY);
+
+        javafx.scene.PointLight light = new javafx.scene.PointLight(Color.WHITE);
+        light.getTransforms().add(new Translate(-400, -300, -300));
+        root3d.getChildren().add(light);
+
+        SubScene subScene = new SubScene(root3d, 600, 600, true, javafx.scene.SceneAntialiasing.BALANCED);
+        subScene.setFill(Color.web("#f7f7f7"));
+        subScene.setCamera(new javafx.scene.PerspectiveCamera(true));
+
+        subScene.addEventHandler(MouseEvent.MOUSE_PRESSED, this::onMousePressed);
+        subScene.addEventHandler(MouseEvent.MOUSE_DRAGGED, this::onMouseDragged);
+        return subScene;
+    }
+
+    private MeshView createFace(double size, Point3D translation, double rotX, double rotY, double rotZ, FaceType type) {
+        TriangleMesh mesh = new TriangleMesh();
+
+        float half = (float) (size / 2.0);
+        mesh.getPoints().addAll(
+                -half, -half, 0,
+                half, -half, 0,
+                half, half, 0,
+                -half, half, 0
+        );
+
+        mesh.getTexCoords().addAll(
+                0, 0,
+                1, 0,
+                1, 1,
+                0, 1
+        );
+
+        mesh.getFaces().addAll(
+                0, 0, 1, 1, 2, 2,
+                2, 2, 3, 3, 0, 0
+        );
+
+        MeshView view = new MeshView(mesh);
+        view.setMaterial(createMaterialForFace(type));
+        view.setCullFace(javafx.scene.shape.CullFace.BACK);
+        view.setDrawMode(javafx.scene.shape.DrawMode.FILL);
+
+        view.getTransforms().addAll(new Rotate(rotX, Rotate.X_AXIS), new Rotate(rotY, Rotate.Y_AXIS), new Rotate(rotZ, Rotate.Z_AXIS),
+                new Translate(translation.getX(), translation.getY(), translation.getZ()));
+        return view;
+    }
+
+    private PhongMaterial createMaterialForFace(FaceType type) {
+        int size = 256;
+        javafx.scene.image.WritableImage texture = new javafx.scene.image.WritableImage(size, size);
+        javafx.scene.image.PixelWriter writer = texture.getPixelWriter();
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                double u = x / (double) (size - 1);
+                double v = y / (double) (size - 1);
+                Color color = switch (type) {
+                    case FRONT -> Color.color(u, 1 - v, 1);
+                    case BACK -> Color.color(u, 1 - v, 0);
+                    case LEFT -> Color.color(0, 1 - v, u);
+                    case RIGHT -> Color.color(1, 1 - v, u);
+                    case TOP -> Color.color(u, 1, u);
+                    case BOTTOM -> Color.color(u, 0, u);
+                };
+                writer.setColor(x, y, color);
             }
         }
+        PhongMaterial material = new PhongMaterial();
+        material.setDiffuseMap(texture);
+        return material;
     }
 
-    private HBox buildControls() {
-        Label label = new Label("Przekrój:");
+    private VBox buildControls() {
+        VBox container = new VBox(14);
+        container.setPadding(new Insets(10));
+        container.setAlignment(Pos.TOP_LEFT);
+        container.setPrefWidth(320);
 
-        RadioButton none = new RadioButton("Brak");
-        RadioButton axisX = new RadioButton("X");
-        RadioButton axisY = new RadioButton("Y");
-        RadioButton axisZ = new RadioButton("Z");
-        none.setSelected(true);
+        Label title = new Label("Przekrój kostki RGB");
+        title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
 
-        ToggleGroup group = new ToggleGroup();
-        none.setToggleGroup(group);
-        axisX.setToggleGroup(group);
-        axisY.setToggleGroup(group);
-        axisZ.setToggleGroup(group);
+        axisChoice.getItems().addAll("B (oś Z)", "G (oś Y)", "R (oś X)");
+        axisChoice.getSelectionModel().selectFirst();
+        axisChoice.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> drawSlice());
 
-        sliceSlider.setPrefWidth(220);
-        sliceSlider.setDisable(true);
-        sliceSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            render();
-        });
+        sliceSlider.setShowTickLabels(true);
+        sliceSlider.setShowTickMarks(true);
+        sliceSlider.setBlockIncrement(0.05);
+        sliceSlider.valueProperty().addListener((obs, oldV, newV) -> drawSlice());
 
-        group.selectedToggleProperty().addListener((obs, old, toggle) -> {
-            if (toggle == axisX) {
-                sliceAxis = 'X';
-            } else if (toggle == axisY) {
-                sliceAxis = 'Y';
-            } else if (toggle == axisZ) {
-                sliceAxis = 'Z';
-            } else {
-                sliceAxis = 'N';
-            }
-            sliceSlider.setDisable(sliceAxis == 'N');
-            render();
-        });
-
-        HBox box = new HBox(12, label, none, axisX, axisY, axisZ, sliceSlider);
-        box.setPadding(new Insets(10, 0, 0, 0));
+        HBox sliderBox = new HBox(10, new Label("Poziom:"), sliceSlider);
         HBox.setHgrow(sliceSlider, Priority.ALWAYS);
-        return box;
+
+        Label hint = new Label("Przeciągaj myszą, aby obracać kostkę.\n"
+                + "Zmiana suwaka pokazuje przekrój dla wybranej osi.");
+        hint.setWrapText(true);
+
+        container.getChildren().addAll(title, axisChoice, sliderBox, sliceCanvas, hint);
+        return container;
+    }
+
+    private void drawSlice() {
+        GraphicsContext gc = sliceCanvas.getGraphicsContext2D();
+        double level = sliceSlider.getValue();
+        String axis = axisChoice.getSelectionModel().getSelectedItem();
+        int size = (int) sliceCanvas.getWidth();
+
+        javafx.scene.image.PixelWriter writer = gc.getPixelWriter();
+        for (int y = 0; y < size; y++) {
+            for (int x = 0; x < size; x++) {
+                double r = x / (double) (size - 1);
+                double g = 1 - y / (double) (size - 1);
+                double b = level;
+
+                if (axis.startsWith("G")) {
+                    g = level;
+                    b = x / (double) (size - 1);
+                } else if (axis.startsWith("R")) {
+                    r = level;
+                    b = x / (double) (size - 1);
+                    g = 1 - y / (double) (size - 1);
+                }
+                writer.setColor(x, y, Color.color(r, g, b));
+            }
+        }
+        gc.setStroke(Color.DARKGRAY);
+        gc.strokeRect(0.5, 0.5, size - 1, size - 1);
     }
 
     private void onMousePressed(MouseEvent event) {
-        lastMouseX = event.getX();
-        lastMouseY = event.getY();
+        lastX = event.getSceneX();
+        lastY = event.getSceneY();
     }
 
     private void onMouseDragged(MouseEvent event) {
-        double dx = event.getX() - lastMouseX;
-        double dy = event.getY() - lastMouseY;
-        rotY += dx * 0.01;
-        rotX += dy * 0.01;
-        lastMouseX = event.getX();
-        lastMouseY = event.getY();
-        render();
+        double deltaX = event.getSceneX() - lastX;
+        double deltaY = event.getSceneY() - lastY;
+        rotateY.setAngle(rotateY.getAngle() + deltaX * 0.4);
+        rotateX.setAngle(rotateX.getAngle() - deltaY * 0.4);
+        lastX = event.getSceneX();
+        lastY = event.getSceneY();
     }
 
-    private void render() {
-        GraphicsContext gc = canvas.getGraphicsContext2D();
-        double width = canvas.getWidth();
-        double height = canvas.getHeight();
-
-        gc.setFill(Color.BLACK);
-        gc.fillRect(0, 0, width, height);
-
-        double centerX = width / 2.0;
-        double centerY = height / 2.0;
-        double scale = Math.min(width, height) * 0.65;
-        int voxelSize = Math.max(2, (int) (scale / voxelSteps * 0.8));
-
-        double cosX = Math.cos(rotX);
-        double sinX = Math.sin(rotX);
-        double cosY = Math.cos(rotY);
-        double sinY = Math.sin(rotY);
-
-        List<RenderableVoxel> renderList = new ArrayList<>();
-        int sliceValue = (int) Math.round(sliceSlider.getValue());
-
-        for (Point3D p : voxels) {
-            int px = (int) Math.round(p.x * (voxelSteps - 1));
-            int py = (int) Math.round(p.y * (voxelSteps - 1));
-            int pz = (int) Math.round(p.z * (voxelSteps - 1));
-
-            if (sliceAxis == 'X' && px > sliceValue) {
-                continue;
-            }
-            if (sliceAxis == 'Y' && py > sliceValue) {
-                continue;
-            }
-            if (sliceAxis == 'Z' && pz > sliceValue) {
-                continue;
-            }
-
-            double x = p.x - 0.5;
-            double y = p.y - 0.5;
-            double z = p.z - 0.5;
-
-            double yRot = y * cosX - z * sinX;
-            double zRot = y * sinX + z * cosX;
-
-            double xRot = x * cosY - zRot * sinY;
-            double zFinal = x * sinY + zRot * cosY;
-
-            double sx = xRot * scale + centerX;
-            double sy = yRot * scale + centerY;
-
-            Color color = Color.color(p.x, p.y, p.z);
-            renderList.add(new RenderableVoxel(sx, sy, zFinal, color));
-        }
-
-        renderList.sort(Comparator.comparingDouble(v -> v.depth));
-
-        for (RenderableVoxel v : renderList) {
-            gc.setFill(v.color);
-            gc.fillRect(v.sx - voxelSize / 2.0, v.sy - voxelSize / 2.0, voxelSize, voxelSize);
-        }
-
-        gc.setStroke(Color.DARKGRAY);
-        gc.strokeRect(0.5, 0.5, width - 1, height - 1);
-    }
-
-    private record Point3D(double x, double y, double z) {
-    }
-
-    private record RenderableVoxel(double sx, double sy, double depth, Color color) {
+    private enum FaceType {
+        FRONT, BACK, LEFT, RIGHT, TOP, BOTTOM
     }
 }

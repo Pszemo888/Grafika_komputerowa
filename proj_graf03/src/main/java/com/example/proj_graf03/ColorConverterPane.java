@@ -3,299 +3,300 @@ package com.example.proj_graf03;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
-import javafx.scene.control.RadioButton;
 import javafx.scene.control.Slider;
 import javafx.scene.control.TextField;
-import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
-import java.text.DecimalFormat;
-import java.util.Locale;
-
-/**
- * Panel obsługujący konwersję przestrzeni barw między RGB oraz CMYK w czasie rzeczywistym.
- */
 public class ColorConverterPane extends BorderPane {
 
-    private final Slider redSlider = createSlider(0, 255);
-    private final Slider greenSlider = createSlider(0, 255);
-    private final Slider blueSlider = createSlider(0, 255);
+    private final TextField hexField = new TextField("#808080");
+    private final Slider rSlider = new Slider(0, 255, 128);
+    private final Slider gSlider = new Slider(0, 255, 128);
+    private final Slider bSlider = new Slider(0, 255, 128);
 
-    private final TextField redField = createNumberField("0", 3);
-    private final TextField greenField = createNumberField("0", 3);
-    private final TextField blueField = createNumberField("0", 3);
+    private final TextField rField = new TextField("128");
+    private final TextField gField = new TextField("128");
+    private final TextField bField = new TextField("128");
 
-    private final Slider cyanSlider = createSlider(0, 1);
-    private final Slider magentaSlider = createSlider(0, 1);
-    private final Slider yellowSlider = createSlider(0, 1);
-    private final Slider blackSlider = createSlider(0, 1);
+    private final Slider cSlider = new Slider(0, 1, 0.5);
+    private final Slider mSlider = new Slider(0, 1, 0.5);
+    private final Slider ySlider = new Slider(0, 1, 0.5);
+    private final Slider kSlider = new Slider(0, 1, 0.5);
 
-    private final TextField cyanField = createNumberField("0.0", 4);
-    private final TextField magentaField = createNumberField("0.0", 4);
-    private final TextField yellowField = createNumberField("0.0", 4);
-    private final TextField blackField = createNumberField("0.0", 4);
+    private final TextField cField = new TextField("0.5");
+    private final TextField mField = new TextField("0.5");
+    private final TextField yField = new TextField("0.5");
+    private final TextField kField = new TextField("0.5");
 
-    private final Rectangle preview = new Rectangle(260, 120);
-    private final DecimalFormat cmykFormat = new DecimalFormat("0.00");
+    private final Rectangle previewRect = new Rectangle(150, 150);
 
-    private boolean updating = false;
+    private boolean updating = false; // flaga, żeby nie robić pętli przy aktualizacjach
 
     public ColorConverterPane() {
-        setPadding(new Insets(20));
-        setPrefWidth(500);
+        setPadding(new Insets(15));
 
-        VBox root = new VBox(16);
-        root.setAlignment(Pos.TOP_CENTER);
+        hexField.setEditable(false);
+        hexField.setStyle("-fx-font-family: monospace");
 
-        Label title = new Label("Konwersja przestrzeni barw");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        previewRect.setStroke(Color.GRAY);
 
-        HBox modeBox = new HBox(12);
-        modeBox.setAlignment(Pos.CENTER_LEFT);
-        ToggleGroup toggleGroup = new ToggleGroup();
-        RadioButton rgbInput = new RadioButton("Wprowadzam RGB");
-        RadioButton cmykInput = new RadioButton("Wprowadzam CMYK");
-        rgbInput.setToggleGroup(toggleGroup);
-        cmykInput.setToggleGroup(toggleGroup);
-        rgbInput.setSelected(true);
-        modeBox.getChildren().addAll(new Label("Tryb wejściowy:"), rgbInput, cmykInput);
+        VBox rgbBox = buildRgbBox();
+        VBox cmykBox = buildCmykBox();
 
-        GridPane rgbPane = buildRgbPane();
-        GridPane cmykPane = buildCmykPane();
+        HBox center = new HBox(20, rgbBox, cmykBox, buildPreviewBox());
+        center.setAlignment(Pos.TOP_CENTER);
+        setCenter(center);
 
-        HBox previewBox = new HBox(12);
-        previewBox.setAlignment(Pos.CENTER_LEFT);
-        preview.setStroke(Color.GRAY);
-        previewBox.getChildren().addAll(new Label("Podgląd koloru:"), preview);
+        initListeners();
 
-        root.getChildren().addAll(title, modeBox, rgbPane, cmykPane, previewBox);
-        setCenter(root);
-
-        setupListeners(rgbInput, cmykInput);
-        updateFromRgb(0, 0, 0);
+        // ustawienie początkowe
+        syncFromRGB();
     }
 
-    private GridPane buildRgbPane() {
-        GridPane grid = createGrid();
-        addRow(grid, 0, "R", redSlider, redField, 255);
-        addRow(grid, 1, "G", greenSlider, greenField, 255);
-        addRow(grid, 2, "B", blueSlider, blueField, 255);
-        grid.setPadding(new Insets(10, 0, 6, 0));
-        grid.setStyle("-fx-border-color: #d0d0d0; -fx-border-radius: 6; -fx-padding: 12;");
-        Label title = new Label("RGB (0-255)");
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        grid.add(title, 0, 0, 4, 1);
-        return grid;
+    private VBox buildRgbBox() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+        box.setStyle("-fx-border-color: #cccccc; -fx-border-radius: 5; -fx-border-width: 1;");
+        Label title = new Label("RGB");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(8);
+        grid.setVgap(6);
+
+        setupIntSlider(rSlider);
+        setupIntSlider(gSlider);
+        setupIntSlider(bSlider);
+
+        grid.addRow(0, new Label("R:"), rSlider, rField);
+        grid.addRow(1, new Label("G:"), gSlider, gField);
+        grid.addRow(2, new Label("B:"), bSlider, bField);
+
+        box.getChildren().addAll(title, grid);
+        return box;
     }
 
-    private GridPane buildCmykPane() {
-        GridPane grid = createGrid();
-        addRow(grid, 0, "C", cyanSlider, cyanField, 1);
-        addRow(grid, 1, "M", magentaSlider, magentaField, 1);
-        addRow(grid, 2, "Y", yellowSlider, yellowField, 1);
-        addRow(grid, 3, "K", blackSlider, blackField, 1);
-        grid.setPadding(new Insets(10, 0, 6, 0));
-        grid.setStyle("-fx-border-color: #d0d0d0; -fx-border-radius: 6; -fx-padding: 12;");
-        Label title = new Label("CMYK (0-1)");
-        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-        grid.add(title, 0, 0, 4, 1);
-        return grid;
+    private VBox buildCmykBox() {
+        VBox box = new VBox(10);
+        box.setPadding(new Insets(10));
+        box.setStyle("-fx-border-color: #cccccc; -fx-border-radius: 5; -fx-border-width: 1;");
+        Label title = new Label("CMYK");
+        title.setStyle("-fx-font-size: 14px; -fx-font-weight: bold;");
+
+        GridPane grid = new GridPane();
+        grid.setHgap(8);
+        grid.setVgap(6);
+
+        setupDoubleSlider(cSlider);
+        setupDoubleSlider(mSlider);
+        setupDoubleSlider(ySlider);
+        setupDoubleSlider(kSlider);
+
+        grid.addRow(0, new Label("C:"), cSlider, cField);
+        grid.addRow(1, new Label("M:"), mSlider, mField);
+        grid.addRow(2, new Label("Y:"), ySlider, yField);
+        grid.addRow(3, new Label("K:"), kSlider, kField);
+
+        box.getChildren().addAll(title, grid);
+        return box;
     }
 
-    private void setupListeners(RadioButton rgbInput, RadioButton cmykInput) {
-        redSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (rgbInput.isSelected()) {
-                updateFromRgb(redSlider.getValue(), greenSlider.getValue(), blueSlider.getValue());
-            }
-        });
-        greenSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (rgbInput.isSelected()) {
-                updateFromRgb(redSlider.getValue(), greenSlider.getValue(), blueSlider.getValue());
-            }
-        });
-        blueSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (rgbInput.isSelected()) {
-                updateFromRgb(redSlider.getValue(), greenSlider.getValue(), blueSlider.getValue());
-            }
-        });
+    private VBox buildPreviewBox() {
+        Label title = new Label("Podgląd koloru");
+        Label hexLabel = new Label("HEX:");
 
-        cyanSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (cmykInput.isSelected()) {
-                updateFromCmyk(cyanSlider.getValue(), magentaSlider.getValue(), yellowSlider.getValue(), blackSlider.getValue());
-            }
-        });
-        magentaSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (cmykInput.isSelected()) {
-                updateFromCmyk(cyanSlider.getValue(), magentaSlider.getValue(), yellowSlider.getValue(), blackSlider.getValue());
-            }
-        });
-        yellowSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (cmykInput.isSelected()) {
-                updateFromCmyk(cyanSlider.getValue(), magentaSlider.getValue(), yellowSlider.getValue(), blackSlider.getValue());
-            }
-        });
-        blackSlider.valueProperty().addListener((obs, oldV, newV) -> {
-            if (cmykInput.isSelected()) {
-                updateFromCmyk(cyanSlider.getValue(), magentaSlider.getValue(), yellowSlider.getValue(), blackSlider.getValue());
-            }
-        });
+        HBox hexBox = new HBox(5, hexLabel, hexField);
 
-        redField.setOnAction(e -> handleRgbFieldChange());
-        greenField.setOnAction(e -> handleRgbFieldChange());
-        blueField.setOnAction(e -> handleRgbFieldChange());
-
-        cyanField.setOnAction(e -> handleCmykFieldChange());
-        magentaField.setOnAction(e -> handleCmykFieldChange());
-        yellowField.setOnAction(e -> handleCmykFieldChange());
-        blackField.setOnAction(e -> handleCmykFieldChange());
-
-        rgbInput.selectedProperty().addListener((obs, oldV, newV) -> {
-            if (newV) {
-                updateFromRgb(redSlider.getValue(), greenSlider.getValue(), blueSlider.getValue());
-            }
-        });
-        cmykInput.selectedProperty().addListener((obs, oldV, newV) -> {
-            if (newV) {
-                updateFromCmyk(cyanSlider.getValue(), magentaSlider.getValue(), yellowSlider.getValue(), blackSlider.getValue());
-            }
-        });
+        VBox box = new VBox(10, title, previewRect, hexBox);
+        box.setAlignment(Pos.TOP_CENTER);
+        box.setPadding(new Insets(10));
+        return box;
     }
 
-    private void handleRgbFieldChange() {
-        try {
-            double r = clamp(Double.parseDouble(redField.getText()), 0, 255);
-            double g = clamp(Double.parseDouble(greenField.getText()), 0, 255);
-            double b = clamp(Double.parseDouble(blueField.getText()), 0, 255);
-            updateFromRgb(r, g, b);
-        } catch (NumberFormatException ignored) {
-        }
+    private void setupIntSlider(Slider s) {
+        s.setShowTickLabels(true);
+        s.setShowTickMarks(true);
+        s.setMajorTickUnit(64);
+        s.setMinorTickCount(4);
+        s.setBlockIncrement(1);
     }
 
-    private void handleCmykFieldChange() {
-        try {
-            double c = clamp(parseLocaleNumber(cyanField.getText()), 0, 1);
-            double m = clamp(parseLocaleNumber(magentaField.getText()), 0, 1);
-            double y = clamp(parseLocaleNumber(yellowField.getText()), 0, 1);
-            double k = clamp(parseLocaleNumber(blackField.getText()), 0, 1);
-            updateFromCmyk(c, m, y, k);
-        } catch (NumberFormatException ignored) {
-        }
+    private void setupDoubleSlider(Slider s) {
+        s.setShowTickLabels(true);
+        s.setShowTickMarks(true);
+        s.setMajorTickUnit(0.25);
+        s.setMinorTickCount(4);
+        s.setBlockIncrement(0.01);
     }
 
-    private void updateFromRgb(double r, double g, double b) {
+    private void initListeners() {
+        // RGB -> aktualizacja CMYK
+        rSlider.valueProperty().addListener((obs, o, n) -> onRgbChangedFromSliders());
+        gSlider.valueProperty().addListener((obs, o, n) -> onRgbChangedFromSliders());
+        bSlider.valueProperty().addListener((obs, o, n) -> onRgbChangedFromSliders());
+
+        rField.setOnAction(e -> onRgbChangedFromFields());
+        gField.setOnAction(e -> onRgbChangedFromFields());
+        bField.setOnAction(e -> onRgbChangedFromFields());
+
+        rField.focusedProperty().addListener((obs, o, n) -> { if (!n) onRgbChangedFromFields(); });
+        gField.focusedProperty().addListener((obs, o, n) -> { if (!n) onRgbChangedFromFields(); });
+        bField.focusedProperty().addListener((obs, o, n) -> { if (!n) onRgbChangedFromFields(); });
+
+        // CMYK -> aktualizacja RGB
+        cSlider.valueProperty().addListener((obs, o, n) -> onCmykChangedFromSliders());
+        mSlider.valueProperty().addListener((obs, o, n) -> onCmykChangedFromSliders());
+        ySlider.valueProperty().addListener((obs, o, n) -> onCmykChangedFromSliders());
+        kSlider.valueProperty().addListener((obs, o, n) -> onCmykChangedFromSliders());
+
+        cField.setOnAction(e -> onCmykChangedFromFields());
+        mField.setOnAction(e -> onCmykChangedFromFields());
+        yField.setOnAction(e -> onCmykChangedFromFields());
+        kField.setOnAction(e -> onCmykChangedFromFields());
+
+        cField.focusedProperty().addListener((obs, o, n) -> { if (!n) onCmykChangedFromFields(); });
+        mField.focusedProperty().addListener((obs, o, n) -> { if (!n) onCmykChangedFromFields(); });
+        yField.focusedProperty().addListener((obs, o, n) -> { if (!n) onCmykChangedFromFields(); });
+        kField.focusedProperty().addListener((obs, o, n) -> { if (!n) onCmykChangedFromFields(); });
+    }
+
+    private void onRgbChangedFromSliders() {
         if (updating) return;
         updating = true;
+        int r = (int) Math.round(rSlider.getValue());
+        int g = (int) Math.round(gSlider.getValue());
+        int b = (int) Math.round(bSlider.getValue());
 
-        redSlider.setValue(r);
-        greenSlider.setValue(g);
-        blueSlider.setValue(b);
+        rField.setText(String.valueOf(r));
+        gField.setText(String.valueOf(g));
+        bField.setText(String.valueOf(b));
 
-        redField.setText(String.valueOf((int) Math.round(r)));
-        greenField.setText(String.valueOf((int) Math.round(g)));
-        blueField.setText(String.valueOf((int) Math.round(b)));
+        double[] cmyk = ColorUtils.rgbToCmyk(r, g, b);
+        updateCmykControls(cmyk[0], cmyk[1], cmyk[2], cmyk[3]);
 
-        double rNorm = r / 255.0;
-        double gNorm = g / 255.0;
-        double bNorm = b / 255.0;
-        double k = 1 - Math.max(rNorm, Math.max(gNorm, bNorm));
-
-        double c = (1 - rNorm - k) / (1 - k + 1e-6);
-        double m = (1 - gNorm - k) / (1 - k + 1e-6);
-        double y = (1 - bNorm - k) / (1 - k + 1e-6);
-
-        updateCmykControls(c, m, y, k);
-        preview.setFill(Color.rgb((int) r, (int) g, (int) b));
+        updatePreview(r, g, b);
         updating = false;
     }
 
-    private void updateFromCmyk(double c, double m, double y, double k) {
+    private void onRgbChangedFromFields() {
         if (updating) return;
         updating = true;
-        updateCmykControls(c, m, y, k);
+        int r = parseInt(rField.getText(), 0, 255, (int) rSlider.getValue());
+        int g = parseInt(gField.getText(), 0, 255, (int) gSlider.getValue());
+        int b = parseInt(bField.getText(), 0, 255, (int) bSlider.getValue());
 
-        double r = 255 * (1 - c) * (1 - k);
-        double g = 255 * (1 - m) * (1 - k);
-        double b = 255 * (1 - y) * (1 - k);
+        rSlider.setValue(r);
+        gSlider.setValue(g);
+        bSlider.setValue(b);
 
-        redSlider.setValue(r);
-        greenSlider.setValue(g);
-        blueSlider.setValue(b);
+        double[] cmyk = ColorUtils.rgbToCmyk(r, g, b);
+        updateCmykControls(cmyk[0], cmyk[1], cmyk[2], cmyk[3]);
 
-        redField.setText(String.valueOf((int) Math.round(r)));
-        greenField.setText(String.valueOf((int) Math.round(g)));
-        blueField.setText(String.valueOf((int) Math.round(b)));
+        updatePreview(r, g, b);
+        updating = false;
+    }
 
-        preview.setFill(Color.rgb((int) r, (int) g, (int) b));
+    private void onCmykChangedFromSliders() {
+        if (updating) return;
+        updating = true;
+
+        double c = cSlider.getValue();
+        double m = mSlider.getValue();
+        double y = ySlider.getValue();
+        double k = kSlider.getValue();
+
+        cField.setText(String.format("%.3f", c));
+        mField.setText(String.format("%.3f", m));
+        yField.setText(String.format("%.3f", y));
+        kField.setText(String.format("%.3f", k));
+
+        int[] rgb = ColorUtils.cmykToRgb(c, m, y, k);
+        updateRgbControls(rgb[0], rgb[1], rgb[2]);
+        updatePreview(rgb[0], rgb[1], rgb[2]);
+
+        updating = false;
+    }
+
+    private void onCmykChangedFromFields() {
+        if (updating) return;
+        updating = true;
+
+        double c = parseDouble(cField.getText(), 0, 1, cSlider.getValue());
+        double m = parseDouble(mField.getText(), 0, 1, mSlider.getValue());
+        double y = parseDouble(yField.getText(), 0, 1, ySlider.getValue());
+        double k = parseDouble(kField.getText(), 0, 1, kSlider.getValue());
+
+        cSlider.setValue(c);
+        mSlider.setValue(m);
+        ySlider.setValue(y);
+        kSlider.setValue(k);
+
+        int[] rgb = ColorUtils.cmykToRgb(c, m, y, k);
+        updateRgbControls(rgb[0], rgb[1], rgb[2]);
+        updatePreview(rgb[0], rgb[1], rgb[2]);
+
         updating = false;
     }
 
     private void updateCmykControls(double c, double m, double y, double k) {
-        cyanSlider.setValue(c);
-        magentaSlider.setValue(m);
-        yellowSlider.setValue(y);
-        blackSlider.setValue(k);
+        c = ColorUtils.clamp01(c);
+        m = ColorUtils.clamp01(m);
+        y = ColorUtils.clamp01(y);
+        k = ColorUtils.clamp01(k);
 
-        cyanField.setText(cmykFormat.format(c));
-        magentaField.setText(cmykFormat.format(m));
-        yellowField.setText(cmykFormat.format(y));
-        blackField.setText(cmykFormat.format(k));
+        cSlider.setValue(c);
+        mSlider.setValue(m);
+        ySlider.setValue(y);
+        kSlider.setValue(k);
+
+        cField.setText(String.format("%.3f", c));
+        mField.setText(String.format("%.3f", m));
+        yField.setText(String.format("%.3f", y));
+        kField.setText(String.format("%.3f", k));
     }
 
-    private double parseLocaleNumber(String text) {
-        String normalized = text.replace(',', '.');
-        return Double.parseDouble(normalized);
+    private void updateRgbControls(int r, int g, int b) {
+        rSlider.setValue(r);
+        gSlider.setValue(g);
+        bSlider.setValue(b);
+
+        rField.setText(String.valueOf(r));
+        gField.setText(String.valueOf(g));
+        bField.setText(String.valueOf(b));
     }
 
-    private Slider createSlider(double min, double max) {
-        Slider slider = new Slider(min, max, min);
-        slider.setShowTickMarks(true);
-        slider.setShowTickLabels(true);
-        slider.setMajorTickUnit((max - min) / 4.0);
-        slider.setBlockIncrement((max - min) / 100.0);
-        slider.setSnapToTicks(false);
-        return slider;
+    private void updatePreview(int r, int g, int b) {
+        previewRect.setFill(Color.rgb(r, g, b));
+        String hex = String.format("#%02X%02X%02X", r, g, b);
+        hexField.setText(hex);
     }
 
-    private TextField createNumberField(String initial, int width) {
-        TextField field = new TextField(initial);
-        field.setPrefColumnCount(width);
-        return field;
+    private int parseInt(String text, int min, int max, int fallback) {
+        try {
+            int v = Integer.parseInt(text.trim());
+            if (v < min || v > max) return fallback;
+            return v;
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 
-    private GridPane createGrid() {
-        GridPane grid = new GridPane();
-        grid.setHgap(10);
-        grid.setVgap(12);
-        ColumnConstraints labelCol = new ColumnConstraints();
-        labelCol.setPercentWidth(10);
-        ColumnConstraints sliderCol = new ColumnConstraints();
-        sliderCol.setPercentWidth(70);
-        ColumnConstraints fieldCol = new ColumnConstraints();
-        fieldCol.setPercentWidth(20);
-        grid.getColumnConstraints().addAll(labelCol, sliderCol, fieldCol);
-        return grid;
+    private double parseDouble(String text, double min, double max, double fallback) {
+        try {
+            double v = Double.parseDouble(text.trim().replace(",", "."));
+            if (v < min || v > max) return fallback;
+            return v;
+        } catch (Exception e) {
+            return fallback;
+        }
     }
 
-    private void addRow(GridPane grid, int row, String labelText, Slider slider, TextField field, double max) {
-        Label label = new Label(labelText + ":");
-        HBox sliderBox = new HBox(slider);
-        HBox.setHgrow(slider, Priority.ALWAYS);
-        Label maxLabel = new Label(String.format(Locale.US, " / %.0f", max));
-
-        grid.add(label, 0, row + 1);
-        grid.add(sliderBox, 1, row + 1);
-        grid.add(field, 2, row + 1);
-        grid.add(maxLabel, 3, row + 1);
-    }
-
-    private double clamp(double value, double min, double max) {
-        return Math.max(min, Math.min(max, value));
+    private void syncFromRGB() {
+        onRgbChangedFromSliders();
     }
 }

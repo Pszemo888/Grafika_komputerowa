@@ -37,9 +37,13 @@ public final class PpmIO {
 
         for (int y = 0; y < h; y++) {
             for (int x = 0; x < w; x++) {
+
+                // Każdy token to liczba ASCII → int
                 int r = parseInt(readToken(in), "R");
                 int g = parseInt(readToken(in), "G");
                 int b = parseInt(readToken(in), "B");
+
+                // skalowanie liniowe kanałów
                 int rr = clamp((int)Math.round(r * scale));
                 int gg = clamp((int)Math.round(g * scale));
                 int bb = clamp((int)Math.round(b * scale));

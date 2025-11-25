@@ -105,6 +105,11 @@ public class App extends Application {
     private void onOpen(Stage stage) {
         FileChooser fc = new FileChooser();
         fc.setTitle("Otwórz obraz");
+        File defaultDir = new File("C:/Users/przem/Desktop/SEMESTR 7/Grafika/OneDrive_1_16.11.2025");
+        if (defaultDir.exists() && defaultDir.isDirectory()) {
+            fc.setInitialDirectory(defaultDir);
+        }
+
         fc.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter("PPM / JPEG", "*.ppm", "*.pnm", "*.jpg", "*.jpeg"),
                 new FileChooser.ExtensionFilter("PPM", "*.ppm", "*.pnm"),

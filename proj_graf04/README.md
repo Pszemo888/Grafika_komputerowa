@@ -1,0 +1,18 @@
+Funkcjonalności:
+- Wczytanie obrazu i podgląd „przed/po”
+- Przekształcenia punktowe:
+  - dodawanie / odejmowanie
+  - mnożenie / dzielenie
+  - zmiana jasności
+  - skala szarości (2 metody)
+- Filtry poprawy jakości:
+  - uśredniający
+  - medianowy
+  - Sobel (poziomy + pionowy)
+  - wyostrzanie (górnoprzepustowy)
+  - rozmycie Gaussa
+  - (opcjonalnie) maska splotu dowolnego rozmiaru wpisywana przez użytkownika
+- Parametry:
+  - wartości operacji (np. +30, *1.2, itp.)
+  - rozmiar okna dla mediany (np. 3×3/5×5)
+  - wybór maski/trybu
